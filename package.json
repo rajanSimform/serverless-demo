@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@aws-sdk/client-sns": "^3.777.0",
-    "@aws-sdk/client-sqs": "^3.777.0"
+    "@aws-sdk/client-sqs": "^3.777.0",
+    "@sentry/aws-serverless": "^9.14.0"
   }
 }

@@ -21,6 +21,11 @@ provider:
         - "sns:Publish"
       Resource:
         - { "Ref": "NotificationTopic" }
+    - Effect: Allow
+      Action:
+        - "secretsmanager:GetSecretValue"
+      Resource:
+        - "arn:aws:secretsmanager:${self:provider.region}:*:secret:/my-app/sentry-dsn*"
 
 functions:
   apiTrigger:
@@ -84,6 +89,15 @@ functions:
     events:
       - http:
           path: dynamic-config
+          method: get
+
+  exampleFunction:
+    handler: handlers/exampleHandler.handler
+    environment:
+      SENTRY_DSN: "{{resolve:secretsmanager:/my-app/sentry-dsn:SecretString}}"
+    events:
+      - http:
+          path: example
           method: get
 
 custom:
