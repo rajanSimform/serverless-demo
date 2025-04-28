@@ -1,0 +1,105 @@
+service: serverless-demo
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'development'}
+  environment:
+    SNS_TOPIC_ARN: { "Ref": "NotificationTopic" }
+    SQS_QUEUE_URL: { "Ref": "DemoQueue" }
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - "sqs:ReceiveMessage"
+        - "sqs:DeleteMessage"
+        - "sqs:GetQueueAttributes"
+      Resource:
+        - { "Fn::GetAtt": [ "DemoQueue", "Arn" ] }
+    - Effect: Allow
+      Action:
+        - "sns:Publish"
+      Resource:
+        - { "Ref": "NotificationTopic" }
+
+functions:
+  apiTrigger:
+    handler: handlers/apiTrigger.handler
+    events:
+      - http:
+          path: api-trigger
+          method: get
+
+  sqsConsumer:
+    handler: handlers/sqsConsumer.handler
+    events:
+      - sqs:
+          arn:
+            { "Fn::GetAtt": [ "DemoQueue", "Arn" ] }
+
+  snsPublisher:
+    handler: handlers/snsPublisher.handler
+    events:
+      - http:
+          path: publish-sns
+          method: post
+
+  scheduledFunction:
+    handler: handlers/scheduledFunction.handler
+    events:
+      - schedule: rate(10 minutes)
+
+  dynamoDbHandler:
+    handler: handlers/dynamoDbHandler.handler
+    events:
+      - http:
+          path: dynamodb
+          method: post
+
+  s3Handler:
+    handler: handlers/s3Handler.handler
+    events:
+      - s3:
+          bucket: my-demo-bucket
+          event: s3:ObjectCreated:*
+
+  customAuthorizer:
+    handler: handlers/customAuthorizer.handler
+
+  websocketHandler:
+    handler: handlers/websocketHandler.handler
+    events:
+      - websocket:
+          route: $connect
+      - websocket:
+          route: $disconnect
+      - websocket:
+          route: message
+
+  dynamicConfigApi:
+    handler: handlers/dynamicConfigApi.handler
+    memorySize: ${self:custom.memorySize.${self:provider.stage}}
+    timeout: ${self:custom.timeout.${self:provider.stage}}
+    reservedConcurrency: ${self:custom.reservedConcurrency.${self:provider.stage}}
+    events:
+      - http:
+          path: dynamic-config
+          method: get
+
+custom:
+  memorySize:
+    development: 128
+    staging: 512
+  timeout:
+    development: 10
+    staging: 30
+  reservedConcurrency:
+    development: 2
+    staging: 10
+
+resources:
+  Resources:
+    DemoQueue:
+      Type: "AWS::SQS::Queue"
+    NotificationTopic:
+      Type: "AWS::SNS::Topic"
